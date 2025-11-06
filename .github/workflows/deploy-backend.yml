@@ -1,0 +1,22 @@
+name: deploy-backend
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  deploy-render:
+    name: Deploy backend to Render
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trigger Render deployment
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}" \
+            -H "Content-Type: application/json" \
+            -d '{"version": "${{ github.ref_name }}"}'
+        continue-on-error: false
+

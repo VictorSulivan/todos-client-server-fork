@@ -1,0 +1,223 @@
+# Todo List Application - CI/CD Pipeline
+
+## Membres du groupe
+
+| NOM | Prénom |
+|-----|--------|
+| [À compléter] | [À compléter] |
+
+## Architecture et choix techniques
+
+### Stack technique
+
+**Frontend (Client)**
+- React 18 avec TypeScript
+- Vite pour le build et le dev server
+- TailwindCSS pour le styling
+- Déployé sur Vercel
+
+**Backend (Server)**
+- Node.js 20 avec Express
+- TypeScript
+- Sentry pour l'observabilité
+- Déployé sur Render avec Docker
+
+### Structure du projet
+
+```
+todos-client-server-fork/
+├── packages/
+│   ├── client/          # Application React frontend
+│   └── server/          # API Express backend
+└── .github/
+    └── workflows/       # GitHub Actions workflows
+```
+
+## Installation et exécution locale
+
+### Prérequis
+- Node.js 20.x
+- npm
+- Docker (pour tester le build backend)
+
+### Installation
+
+```bash
+# Installer les dépendances du client
+cd packages/client
+npm install
+
+# Installer les dépendances du serveur
+cd ../server
+npm install
+```
+
+### Exécution en développement
+
+**Backend :**
+```bash
+cd packages/server
+npm run dev
+# Le serveur démarre sur http://localhost:3001
+```
+
+**Frontend :**
+```bash
+cd packages/client
+npm run dev
+# L'application démarre sur http://localhost:5173
+```
+
+### Tests
+
+**Backend :**
+```bash
+cd packages/server
+npm run test          # Tests unitaires
+npm run coverage      # Tests avec couverture
+```
+
+**Commitlint (validation des commits) :**
+```bash
+cd packages/server
+npm run commitlint
+
+cd packages/client
+npm run commitlint
+```
+
+### Build Docker backend
+
+```bash
+cd packages/server
+docker build -f Dockerfile -t todo-server:local .
+docker run --rm -e PORT=3001 -p 3001:3001 todo-server:local
+```
+
+## URLs de déploiement
+
+**Frontend :** [À compléter après déploiement sur Vercel]
+- URL : `https://[votre-app].vercel.app`
+
+**Backend :** [À compléter après déploiement sur Render]
+- URL : `https://[votre-app].onrender.com`
+- API : `https://[votre-app].onrender.com/api/todos`
+
+## Pipeline CI/CD
+
+### Workflows GitHub Actions
+
+#### Qualité
+- **test-unit** : Tests unitaires backend avec Vitest (sur push/PR)
+- **coverage-check** : Vérification de la couverture de code (≥70% statements/lines, ≥60% branches/functions) - PR uniquement
+- **lint-commits** : Validation des messages de commit (Conventional Commits) - PR uniquement
+
+#### Packaging
+- **docker-build-and-scan** :
+  - Sur PR : Build de l'image Docker + scan Trivy (fail on CRITICAL)
+  - Sur tag (v*.*.*) : Build + push de l'image versionnée sur Docker Hub
+
+#### Sécurité
+- **security-scan-npm** : `npm audit --audit-level=high` sur client et server (sur push/PR)
+- **security-scan-docker** : Scan Trivy de l'image Docker (sur PR uniquement)
+
+#### Déploiement (sur tag uniquement)
+- **deploy-frontend** : Déploiement sur Vercel
+- **deploy-backend** : Déclenchement du déploiement Render via webhook
+- **smoke-test** : Validation post-déploiement (health checks frontend + backend)
+
+#### Notifications
+- **notify-discord** : Notifications Discord sur succès/échec des déploiements
+
+### Stratégie de déploiement
+
+Le déploiement se déclenche **uniquement** lors de la création d'un tag Git au format `v*.*.*` (ex: `v1.0.0`).
+
+**Processus :**
+1. Création d'un tag : `git tag v1.0.0 && git push origin v1.0.0`
+2. Build de l'image Docker avec le tag versionné : `voilacter/todo-server:v1.0.0`
+3. Push de l'image sur Docker Hub
+4. Déploiement frontend sur Vercel
+5. Déclenchement du déploiement backend sur Render (utilise l'image versionnée)
+6. Smoke tests pour valider les déploiements
+7. Notification Discord du résultat
+
+## Stratégie de rollback
+
+En cas de problème avec une version déployée (ex: `v1.0.2` buggée), voici la procédure de rollback :
+
+### Rollback backend (Render)
+
+1. **Identifier la version précédente stable** (ex: `v1.0.1`)
+2. **Redéployer l'image versionnée** :
+   ```bash
+   # L'image existe déjà sur Docker Hub : voilacter/todo-server:v1.0.1
+   # Sur Render, changer l'image Docker utilisée vers : voilacter/todo-server:v1.0.1
+   ```
+3. **Ou déclencher manuellement le webhook Render** avec la version précédente :
+   ```bash
+   curl -X POST "$RENDER_DEPLOY_HOOK" \
+     -H "Content-Type: application/json" \
+     -d '{"version": "v1.0.1"}'
+   ```
+
+### Rollback frontend (Vercel)
+
+1. **Via l'interface Vercel** : Aller dans les déploiements et restaurer la version précédente
+2. **Ou via CLI** :
+   ```bash
+   vercel rollback [deployment-url]
+   ```
+
+### Avantages de cette stratégie
+
+- ✅ **Images versionnées** : Chaque tag correspond à une image Docker spécifique sur Docker Hub
+- ✅ **Traçabilité** : On sait exactement quelle version est déployée
+- ✅ **Rollback rapide** : Pas besoin de rebuild, l'image existe déjà
+- ✅ **Pas de `:latest`** : Évite les problèmes de versioning
+
+## Observabilité - Sentry
+
+L'application backend est instrumentée avec Sentry pour capturer les erreurs.
+
+### Route de test
+- `GET /debug-sentry` : Génère une erreur intentionnelle pour tester Sentry
+
+### Configuration
+- DSN configuré via variable d'environnement `SENTRY_DSN`
+- Initialisation dans `packages/server/src/instrument.ts`
+
+### Preuve d'intégration
+[À ajouter : Screenshot du dashboard Sentry montrant l'erreur capturée]
+
+## Secrets GitHub requis
+
+Les secrets suivants doivent être configurés dans GitHub (Settings → Secrets and variables → Actions) :
+
+- `DOCKERHUB_USERNAME` : Nom d'utilisateur Docker Hub
+- `DOCKERHUB_TOKEN` : Token d'accès Docker Hub
+- `VERCEL_TOKEN` : Token d'authentification Vercel
+- `VERCEL_ORG_ID` : ID de l'organisation Vercel
+- `VERCEL_PROJECT_ID` : ID du projet Vercel
+- `RENDER_DEPLOY_HOOK` : URL du webhook de déploiement Render
+- `DISCORD_WEBHOOK_URL` : URL du webhook Discord
+- `FRONTEND_URL` : URL du frontend déployé (pour smoke tests)
+- `BACKEND_URL` : URL du backend déployé (pour smoke tests)
+- `SENTRY_DSN` : DSN Sentry (pour le backend)
+
+## Convention de commits
+
+Ce projet utilise [Conventional Commits](https://www.conventionalcommits.org/).
+
+Format : `type(scope): description`
+
+Exemples :
+- `feat(server): add new todo endpoint`
+- `fix(client): resolve styling issue`
+- `ci: update GitHub Actions workflow`
+- `test(server): add unit tests for todos API`
+
+## Licence
+
+[À compléter]
+
