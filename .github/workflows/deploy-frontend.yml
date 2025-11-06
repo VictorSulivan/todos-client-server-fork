@@ -9,9 +9,6 @@ jobs:
   deploy-vercel:
     name: Deploy frontend to Vercel
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/client
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,13 +23,13 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Pull Vercel Environment Information
+      - name: Pull Vercel Environment Information (repo root)
         run: vercel pull --yes --environment=production --token=cQIofyurJL9Rx7XasNSnqbsT
 
-      - name: Build Project Artifacts
+      - name: Build Project Artifacts (repo root)
         run: vercel build --prod --token=cQIofyurJL9Rx7XasNSnqbsT
 
-      - name: Deploy Project Artifacts to Vercel
+      - name: Deploy Project Artifacts to Vercel (repo root)
         run: vercel deploy --prebuilt --prod --token=cQIofyurJL9Rx7XasNSnqbsT
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
