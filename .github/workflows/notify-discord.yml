@@ -1,0 +1,35 @@
+name: notify-discord
+
+on:
+  workflow_run:
+    workflows: ["deploy-frontend", "deploy-backend"]
+    types:
+      - completed
+
+jobs:
+  notify:
+    name: Notify Discord
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify success
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        run: |
+          VERSION=$(echo "${{ github.event.workflow_run.head_branch }}" | sed 's/refs\/tags\///')
+          if [ -z "$VERSION" ]; then
+            VERSION="${{ github.event.workflow_run.head_branch }}"
+          fi
+          curl -H "Content-Type: application/json" \
+            -d "{\"content\": \"✅ **Déploiement réussi**\n\nVersion: \`$VERSION\`\nWorkflow: \`${{ github.event.workflow_run.name }}\`\nCommit: \`${{ github.event.workflow_run.head_sha }}\`\n[Voir les détails](${{ github.event.workflow_run.html_url }})\"}" \
+            "${{ secrets.DISCORD_WEBHOOK_URL }}"
+
+      - name: Notify failure
+        if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+        run: |
+          VERSION=$(echo "${{ github.event.workflow_run.head_branch }}" | sed 's/refs\/tags\///')
+          if [ -z "$VERSION" ]; then
+            VERSION="${{ github.event.workflow_run.head_branch }}"
+          fi
+          curl -H "Content-Type: application/json" \
+            -d "{\"content\": \"❌ **Déploiement échoué**\n\nVersion: \`$VERSION\`\nWorkflow: \`${{ github.event.workflow_run.name }}\`\nCommit: \`${{ github.event.workflow_run.head_sha }}\`\n[Voir les détails](${{ github.event.workflow_run.html_url }})\"}" \
+            "${{ secrets.DISCORD_WEBHOOK_URL }}"
+
