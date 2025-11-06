@@ -60,7 +60,7 @@ jobs:
         id: img
         shell: bash
         run: |
-          USERNAME="${{ secrets.DOCKERHUB_USERNAME }}"
+          USERNAME="voilacter"
           if [ -z "$USERNAME" ]; then USERNAME="${{ github.repository_owner }}"; fi
           USERNAME="$(echo -n "$USERNAME" | xargs)"
           if [ -z "$USERNAME" ]; then
